@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一粒 One Seed | 每一次专注，培育更好的自己</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --main-green: #96D496;
+      --deep-green: #5a9c5a;
+      --bg-light: #f8fff8;
+      --bg-dark: #1c2c1c;
+      --text-light: #222;
+      --text-dark: #eef8ee;
+      --card-light: #ffffff;
+      --card-dark: #2a3d2a;
+      --border: #d2e8d2;
+      --shadow: rgba(90, 156, 90, 0.15);
+    }
+    body.dark {
+      background: var(--bg-dark);
+      color: var(--text-dark);
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Microsoft YaHei", system-ui, sans-serif;
+    }
+    body {
+      background: var(--bg-light);
+      color: var(--text-light);
+      transition: background 0.4s, color 0.4s;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 背景漂浮粒子 */
+    .bg-floats {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .float-item {
+      position: absolute;
+      font-size: 22px;
+      opacity: 0.18;
+      animation: floatUp linear infinite;
+    }
+    body.dark .float-item { opacity: 0.08; }
+    @keyframes floatUp {
+      0% { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.2; }
+      90% { opacity: 0.15; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* 导航栏 */
+    .nav-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      gap: 4px;
+      background: var(--main-green);
+      padding: 12px max(10px, calc(50% - 520px));
+      overflow-x: auto;
+      box-shadow: 0 2px 16px var(--shadow);
+    }
+    .nav-bar button {
+      border: none;
+      background: transparent;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.2s, background 0.25s, box-shadow 0.25s;
+    }
+    .nav-bar button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.35);
+    }
+    .nav-bar button.active {
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      animation: navPop 0.35s ease;
+    }
+    @keyframes navPop {
+      0% { transform: scale(0.92); }
+      60% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+    .nav-bar button:disabled,
+    .nav-bar button.nav-locked {
+      display: none;
+    }
+
+    /* 未登录：隐藏整个导航栏，无法跳转 */
+    body.not-logged-in .nav-bar {
+      display: none;
+    }
+    /* 已登录：隐藏「登录」按钮 */
+    body.logged-in #navLogin {
+      display: none;
+    }
+    /* 专注模式进行中：锁定导航，无法离开倒计时界面 */
+    body.focus-lock .nav-bar button {
+      opacity: 0.4;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    /* 页面容器 */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 1040px;
+      margin: 20px auto;
+      padding: 0 16px;
+      display: none;
+    }
+    .page.show {
+      display: block;
+      animation: pageIn 0.45s ease both;
+    }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: var(--card-light);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      margin: 18px 0;
+      transition: transform 0.3s, box-shadow 0.3s;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+    body.dark .card { background: var(--card-dark); }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px var(--shadow);
+    }
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .card-title span.icon { font-size: 1.4em; }
+
+    /* 按钮 */
+    .btn {
+      background: var(--main-green);
+      border: none;
+      padding: 11px 22px;
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+      box-shadow: 0 3px 12px rgba(150,212,150,0.45);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+      box-shadow: 0 6px 18px rgba(150,212,150,0.55);
+    }
+    .btn:active { transform: translateY(0) scale(0.98); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--deep-green);
+      box-shadow: none;
+    }
+    .btn-outline:hover { box-shadow: 0 4px 12px var(--shadow); }
+    .btn-danger { border-color: #e06060; color: #e06060; }
+    .btn-glow {
+      animation: btnPulse 2s ease-in-out infinite;
+    }
+    @keyframes btnPulse {
+      0%, 100% { box-shadow: 0 3px 12px rgba(150,212,150,0.45); }
+      50% { box-shadow: 0 3px 24px rgba(150,212,150,0.75); }
+    }
+
+    /* 登录 */
+    .login-wrap {
+      height: 90vh;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+    .login-box {
+      width: 340px;
+      animation: loginIn 0.8s ease both;
+    }
+    @keyframes loginIn {
+      from { opacity: 0; transform: scale(0.9) translateY(30px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .seed-logo {
+      font-size: 80px;
+      margin-bottom: 16px;
+      display: inline-block;
+      animation: seedBounce 2.5s ease-in-out infinite;
+    }
+    @keyframes seedBounce {
+      0%, 100% { transform: translateY(0) rotate(-3deg); }
+      50% { transform: translateY(-12px) rotate(3deg); }
+    }
+    .input-item { margin: 10px 0; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-light);
+      color: inherit;
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--main-green);
+      box-shadow: 0 0 0 3px rgba(150,212,150,0.35);
+    }
+    body.dark input { background: var(--card-dark); }
+    .tip-text { color: #dd4444; font-size: 13px; margin: 6px 0; }
+    .tab-switch {
+      color: var(--deep-green);
+      margin: 10px 0;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .tab-switch:hover { opacity: 0.7; text-decoration: underline; }
+
+    /* 统计卡片网格 */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, rgba(150,212,150,0.2), rgba(150,212,150,0.05));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      transition: transform 0.3s;
+    }
+    body.dark .stat-card {
+      background: linear-gradient(135deg, rgba(150,212,150,0.12), rgba(150,212,150,0.03));
+    }
+    .stat-card:hover { transform: scale(1.04); }
+    .stat-card .num {
+      font-size: 26px;
+      font-weight: bold;
+      color: var(--deep-green);
+      animation: countPop 0.5s ease;
+    }
+    body.dark .stat-card .num { color: var(--main-green); }
+    .stat-card .label { font-size: 13px; color: #888; margin-top: 4px; }
+    @keyframes countPop {
+      0% { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* 每日语录 */
+    .quote-box {
+      text-align: center;
+      padding: 14px 18px;
+      margin: 16px 0;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(150,212,150,0.15), rgba(150,212,150,0.05));
+      border-left: 4px solid var(--main-green);
+      font-style: italic;
+      color: #555;
+      animation: quoteFade 0.6s ease;
+    }
+    body.dark .quote-box { color: #aaa; }
+    @keyframes quoteFade {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* 种子动画 */
+    .seed-small {
+      text-align: center;
+      font-size: 56px;
+      margin-bottom: 12px;
+      display: inline-block;
+      width: 100%;
+      animation: seedSway 3s ease-in-out infinite;
+    }
+    @keyframes seedSway {
+      0%, 100% { transform: rotate(-4deg) scale(1); }
+      50% { transform: rotate(4deg) scale(1.06); }
+    }
+    .seed-grow { animation: seedGrow 0.8s ease; }
+    @keyframes seedGrow {
+      0% { transform: scale(0.5); opacity: 0.3; }
+      60% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* 进度条 */
+    .progress-box {
+      width: 100%;
+      height: 16px;
+      background: #e2e2e2;
+      border-radius: 99px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    body.dark .progress-box { background: #3a4d3a; }
+    .progress-inner {
+      height: 100%;
+      background: linear-gradient(90deg, var(--deep-green), var(--main-green));
+      border-radius: 99px;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-inner::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      animation: shimmer 2s infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* 计时页 */
+    .timer-wrap {
+      text-align: center;
+      padding: 10px 0;
+    }
+    .timer-ring {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      margin: 0 auto 24px;
+    }
+    .timer-ring svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+    .timer-ring circle {
+      fill: none;
+      stroke-width: 8;
+    }
+    .ring-bg { stroke: #e2e2e2; }
+    body.dark .ring-bg { stroke: #3a4d3a; }
+    .ring-progress {
+      stroke: var(--main-green);
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s linear;
+    }
+    .time-display {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 52px;
+      font-weight: bold;
+      font-variant-numeric: tabular-nums;
+    }
+    .time-display .mode-tag {
+      font-size: 14px;
+      font-weight: normal;
+      color: var(--deep-green);
+      margin-bottom: 4px;
+    }
+    .timer-running .time-display {
+      animation: timerPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes timerPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .timer-running .ring-progress {
+      animation: ringGlow 2s ease-in-out infinite;
+    }
+    @keyframes ringGlow {
+      0%, 100% { stroke: var(--main-green); }
+      50% { stroke: #b8e8b8; }
+    }
+    .reward-badge {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 99px;
+      background: rgba(150,212,150,0.2);
+      border: 1px dashed var(--deep-green);
+      color: #555;
+      margin-top: 12px;
+      animation: badgeFloat 3s ease-in-out infinite;
+    }
+    body.dark .reward-badge { color: #bbb; }
+    @keyframes badgeFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    /* 森林 */
+    .forest-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .tree-item {
+      text-align: center;
+      padding: 14px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 40px;
+      transition: transform 0.3s, box-shadow 0.3s;
+      animation: treePop 0.5s ease both;
+    }
+    @keyframes treePop {
+      from { opacity: 0; transform: scale(0.3) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .tree-item:hover {
+      transform: scale(1.12) rotate(-3deg);
+      box-shadow: 0 6px 16px var(--shadow);
+    }
+    .forest-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+      font-size: 15px;
+    }
+    .forest-empty .emoji {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+      animation: seedBounce 2s ease-in-out infinite;
+    }
+
+    /* 成就徽章 */
+    .medal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .medal-item {
+      border: 1px solid var(--deep-green);
+      border-radius: 12px;
+      padding: 14px 8px;
+      text-align: center;
+      opacity: 0.35;
+      filter: grayscale(0.8);
+      transition: transform 0.3s, opacity 0.4s, filter 0.4s, box-shadow 0.3s;
+    }
+    .medal-item.unlock {
+      opacity: 1;
+      filter: none;
+      animation: medalUnlock 0.7s ease;
+      box-shadow: 0 4px 16px rgba(150,212,150,0.4);
+    }
+    .medal-item.unlock:hover { transform: scale(1.06) rotate(-2deg); }
+    @keyframes medalUnlock {
+      0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+      60% { transform: scale(1.15) rotate(5deg); }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    .hint-text { font-size: 13px; color: #888; margin-top: 4px; }
+
+    /* 数据总览卡片 */
+    .overview-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px dashed var(--border);
+      transition: padding-left 0.2s;
+    }
+    .overview-row:last-child { border-bottom: none; }
+    .overview-row:hover { padding-left: 8px; }
+    .overview-row .val {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--deep-green);
+    }
+    body.dark .overview-row .val { color: var(--main-green); }
+
+    /* Toast 通知 */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--card-light);
+      border: 1px solid var(--main-green);
+      border-radius: 14px;
+      padding: 16px 24px;
+      box-shadow: 0 8px 32px var(--shadow);
+      z-index: 999;
+      opacity: 0;
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.4s;
+      max-width: 90vw;
+      text-align: center;
+    }
+    body.dark .toast { background: var(--card-dark); }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .toast .toast-icon { font-size: 32px; margin-bottom: 6px; }
+
+    /* 等级徽章 */
+    .level-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--main-green), var(--deep-green));
+      color: #fff;
+      padding: 4px 14px;
+      border-radius: 99px;
+      font-size: 14px;
+      font-weight: bold;
+      margin-left: 8px;
+      animation: badgeShine 3s ease-in-out infinite;
+    }
+    @keyframes badgeShine {
+      0%, 100% { box-shadow: 0 0 0 rgba(150,212,150,0); }
+      50% { box-shadow: 0 0 12px rgba(150,212,150,0.6); }
+    }
+
+    /* 庆祝弹窗 */
+    .celebration-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s;
+    }
+    .celebration-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .celebration-content {
+      text-align: center;
+      transform: scale(0.3);
+      opacity: 0;
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
+    }
+    .celebration-overlay.show .celebration-content {
+      transform: scale(1);
+      opacity: 1;
+    }
+    .celebration-emoji {
+      font-size: 100px;
+      display: block;
+      margin-bottom: 16px;
+      animation: celebEmoji 1.2s ease-in-out infinite;
+    }
+    @keyframes celebEmoji {
+      0%, 100% { transform: scale(1) rotate(-5deg); }
+      25% { transform: scale(1.15) rotate(5deg); }
+      50% { transform: scale(1.05) rotate(-3deg); }
+      75% { transform: scale(1.12) rotate(3deg); }
+    }
+    .celebration-title {
+      font-size: 32px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 2px 20px rgba(150,212,150,0.8);
+      margin-bottom: 8px;
+      animation: celebTitle 0.8s ease both;
+    }
+    @keyframes celebTitle {
+      0% { transform: translateY(20px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .celebration-sub {
+      font-size: 16px;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 24px;
+      animation: celebTitle 0.8s 0.2s ease both;
+    }
+    .celebration-btn {
+      background: #fff;
+      color: var(--deep-green);
+      border: none;
+      padding: 12px 36px;
+      border-radius: 99px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(150,212,150,0.5);
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: celebTitle 0.8s 0.4s ease both;
+    }
+    .celebration-btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 32px rgba(150,212,150,0.7);
+    }
+
+    /* 庆祝粒子 */
+    .celeb-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .celeb-particle {
+      position: absolute;
+      font-size: 24px;
+      animation: celebParticle 2.5s ease-out forwards;
+    }
+    @keyframes celebParticle {
+      0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+      20% { opacity: 1; transform: translate(var(--tx1), var(--ty1)) scale(1) rotate(180deg); }
+      100% { transform: translate(var(--tx2), var(--ty2)) scale(0.3) rotate(720deg); opacity: 0; }
+    }
+
+    /* 光环扩散 */
+    .celebration-ring {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid rgba(150,212,150,0.6);
+      animation: celebRing 1.5s ease-out infinite;
+    }
+    @keyframes celebRing {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 背景漂浮动画 -->
+<div class="bg-floats" id="bgFloats"></div>
+
+<!-- Toast 通知 -->
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toastIcon"></div>
+  <div id="toastMsg"></div>
+</div>
+
+<!-- 庆祝弹窗 -->
+<div class="celebration-overlay" id="celebOverlay">
+  <div class="celeb-particles" id="celebParticles"></div>
+  <div class="celebration-content">
+    <span class="celebration-emoji" id="celebEmoji">🌳</span>
+    <div class="celebration-title" id="celebTitle">种下了一棵树！</div>
+    <div class="celebration-sub" id="celebSub">60 水滴汇聚，生命在成长</div>
+    <div style="position:relative;display:inline-block">
+      <div class="celebration-ring"></div>
+      <button class="celebration-btn" id="celebBtn" style="position:relative;z-index:1">太棒了！</button>
+    </div>
+  </div>
+</div>
+
+<!-- 顶部导航 -->
+<div class="nav-bar">
+  <button data-page="login" id="navLogin">登录</button>
+  <button data-page="home" id="navHome" disabled>首页森林</button>
+  <button data-page="forest" id="navForest" disabled>我的森林</button>
+  <button data-page="data" id="navData" disabled>数据统计</button>
+  <button data-page="achievement" id="navAchieve" disabled>成就徽章</button>
+  <button data-page="mine" id="navMine" disabled>我的</button>
+</div>
+
+<!-- 页面1：登录注册 -->
+<div class="page show" id="login">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="seed-logo">🌱</div>
+      <h1>一粒 One Seed</h1>
+      <p style="margin:8px 0 30px;color:#666">每一次专注，都在培育更好的自己</p>
+
+      <div id="loginForm">
+        <div class="input-item">
+          <input type="text" id="loginUser" placeholder="用户名">
+        </div>
+        <div class="input-item">
+          <input type="password" id="loginPwd" placeholder="密码">
+        </div>
+        <div class="tip-text" id="loginTip"></div>
+        <button class="btn" style="width:100%" id="loginBtn">账号登录</button>
+        <p class="tab-switch" id="toReg">没有账号？前往注册</p>
+      </div>
+
+      <div id="regForm" style="display:none">
+        <div class="input-item">
+          <input type="text" id="regUser" placeholder="设置用户名">
+        </div>
+        <div class="input-item">
+          <input type="password" id="regPwd" placeholder="设置密码">
+        </div>
+        <div class="input-item">
+          <input type="password" id="regPwd2" placeholder="确认密码">
+        </div>
+        <div class="tip-text" id="regTip"></div>
+        <button class="btn" style="width:100%" id="regBtn">完成注册</button>
+        <p class="tab-switch" id="toLogin">已有账号？返回登录</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 页面2：首页森林 -->
+<div class="page" id="home">
+  <div class="card">
+    <div class="card-title">
+      <span class="icon">🌲</span>
+      <h2>今日我的森林</h2>
+      <span class="level-badge">Lv.<span id="homeLevel">1</span></span>
+    </div>
+
+    <div class="quote-box" id="dailyQuote">专注当下，一粒种子也能长成森林。</div>
+
+    <div class="seed-small" id="homeTree">🌱</div>
+    <p>当前等级经验进度：<span id="growPercent">0</span>%</p>
+    <div class="progress-box">
+      <div class="progress-inner" id="growBar" style="width:0%"></div>
+    </div>
+    <p class="hint-text">每 100 经验值升 1 级，专注 1 分钟 = 1 经验值</p>
+
+    <h3 style="margin-top:20px">今日目标</h3>
+    <p>完成 <span id="tomatoNow">0</span> / <span id="tomatoTarget">4</span> 个番茄</p>
+    <div class="progress-box">
+      <div class="progress-inner" id="targetBar" style="width:0%"></div>
+    </div>
+    <p class="hint-text">种 1 棵树需要 60 水滴，专注 1 分钟 = 1 水滴</p>
+
+    <button class="btn btn-glow" style="width:100%;margin-top:20px;font-size:18px" id="goTimer">🍅 开始专注学习</button>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="num" id="todayTime">0</div>
+        <div class="label">今日分钟</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="continueDay">0</div>
+        <div class="label">连续打卡天</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="waterNum">0</div>
+        <div class="label">当前水滴 💧</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="waterToTree">60</div>
+        <div class="label">距下一棵树</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 页面3：专注计时页 -->
+<div class="page" id="timer">
+  <div class="card timer-wrap" id="timerCard">
+    <div class="seed-small" id="timerSeed">🌱</div>
+    <div class="timer-ring">
+      <svg viewBox="0 0 260 260">
+        <circle class="ring-bg" cx="130" cy="130" r="118"/>
+        <circle class="ring-progress" id="ringProgress" cx="130" cy="130" r="118"
+          stroke-dasharray="741.15" stroke-dashoffset="0"/>
+      </svg>
+      <div class="time-display">
+        <span class="mode-tag" id="modeTag">专注模式</span>
+        <span id="timeText">25:00</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin:10px 0;flex-wrap:wrap">
+      <button class="btn" id="startTime">▶ 开始专注</button>
+      <button class="btn btn-outline" id="pauseTime">⏸ 暂停</button>
+      <button class="btn btn-outline" id="stopTime">✕ 放弃本轮</button>
+    </div>
+    <div class="reward-badge" id="rewardHint">
+      本轮完成可获得：💧+<span id="rewardWater">25</span> · ✨+<span id="rewardExp">25</span> 经验
+    </div>
+  </div>
+</div>
+
+<!-- 页面4：森林详情页 -->
+<div class="page" id="forest">
+  <div class="card">
+    <div class="card-title"><span class="icon">🌳</span><h2>我的培育森林</h2></div>
+    <p>累计培育树木：<span id="treeTotal">0</span> 棵（每 60 水滴种 1 棵）</p>
+    <div class="forest-grid" id="forestBox"></div>
+    <div class="forest-empty" id="forestEmpty" style="display:none">
+      <span class="emoji">🌱</span>
+      还没有种下树木，完成专注积累 60 水滴即可种第一棵！
+    </div>
+  </div>
+</div>
+
+<!-- 页面5：数据统计页 -->
+<div class="page" id="data">
+  <div class="card">
+    <div class="card-title"><span class="icon">📈</span><h2>每周专注趋势</h2></div>
+    <canvas id="lineChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">🍅</span><h2>番茄统计</h2></div>
+    <canvas id="barChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📊</span><h3>学习总览</h3></div>
+    <div class="overview-row">
+      <span>累计学习时长</span>
+      <span class="val"><span id="allTime">0</span> 小时</span>
+    </div>
+    <div class="overview-row">
+      <span>累计番茄总数</span>
+      <span class="val"><span id="allTomato">0</span> 个</span>
+    </div>
+    <div class="overview-row">
+      <span>最长连续打卡</span>
+      <span class="val"><span id="maxContinue">0</span> 天</span>
+    </div>
+  </div>
+</div>
+
+<!-- 页面6：成就徽章页 -->
+<div class="page" id="achievement">
+  <div class="card">
+    <div class="card-title"><span class="icon">🏅</span><h2>成长成就徽章</h2></div>
+    <div class="medal-grid" id="medalBox">
+      <div class="medal-item" data-id="med1">🌱 初次专注<br><small>完成第一个番茄</small></div>
+      <div class="medal-item" data-id="med2">🌿 七日坚持<br><small>连续打卡7天</small></div>
+      <div class="medal-item" data-id="med3">🍅 百番茄达人<br><small>累计100个番茄</small></div>
+      <div class="medal-item" data-id="med4">🌳 森林培育者<br><small>累计50小时学习</small></div>
+    </div>
+  </div>
+</div>
+
+<!-- 页面7：我的个人中心 -->
+<div class="page" id="mine">
+  <div class="card">
+    <div class="card-title"><span class="icon">👤</span><h2>我的成长档案</h2></div>
+    <div class="overview-row">
+      <span>昵称</span>
+      <span class="val" id="userNameShow">—</span>
+    </div>
+    <div class="overview-row">
+      <span>成长等级</span>
+      <span class="val"><span id="userLevel">1</span> 级</span>
+    </div>
+    <div class="overview-row">
+      <span>总水滴</span>
+      <span class="val"><span id="allWater">0</span> 💧</span>
+    </div>
+    <div class="overview-row">
+      <span>总经验值</span>
+      <span class="val"><span id="allExp">0</span></span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">⚙️</span><h3>设置</h3></div>
+    <div style="margin:12px 0">
+      <p>专注时长：<span id="focusShow">25</span> min</p>
+      <input type="range" min="10" max="60" value="25" id="focusSlider">
+    </div>
+    <div style="margin:12px 0">
+      <p>每日番茄目标：<span id="targetShow">4</span> 个</p>
+      <input type="range" min="1" max="10" value="4" id="targetSlider">
+    </div>
+    <button class="btn" style="width:100%;margin:10px 0" id="saveSettings">💾 保存设置</button>
+    <p class="hint-text" id="saveTip" style="text-align:center"></p>
+    <button class="btn" style="margin:10px 0" id="themeSwitch">🌙 切换深色/浅色模式</button>
+    <button class="btn btn-outline btn-danger" id="clearAll">清空全部成长数据</button>
+    <button class="btn btn-outline" id="logoutBtn">退出登录</button>
+  </div>
+</div>
+
+<script>
+const EXP_PER_LEVEL = 100;
+const WATER_PER_TREE = 60;
+const REWARD_PER_MIN = 1;
+const RING_CIRCUMFERENCE = 741.15;
+
+const QUOTES = [
+  "专注当下，一粒种子也能长成森林。",
+  "今天的每一分钟，都是明天的养分。",
+  "不积跬步，无以至千里；不积小流，无以成江海。",
+  "种一棵树最好的时间是十年前，其次是现在。",
+  "慢下来，深下去，你会看见成长发生。",
+  "每一次专注，都是在为未来的自己浇水。"
+];
+
+const storage = {
+  get(key) { try { return JSON.parse(localStorage.getItem(key)) || null; } catch(e) { return null; } },
+  set(key, val) { localStorage.setItem(key, JSON.stringify(val)); },
+  del(key) { localStorage.removeItem(key); }
+};
+
+let loginState = storage.get("seedLogin") || { isLogin: false, name: "" };
+let userAccountDB = storage.get("seedUserDB") || [];
+let seedData = storage.get("seedData") || {
+  water: 0, growValue: 0, todayTomato: 0, targetTomato: 4,
+  focusMin: 25, continueSign: 0, maxContinue: 0, allTomato: 0,
+  allMin: 0, treeList: [], signDays: [], weekData: [0,0,0,0,0,0,0],
+  medal: {med1:false,med2:false,med3:false,med4:false}
+};
+if (!Array.isArray(seedData.weekData) || seedData.weekData.length !== 7) {
+  seedData.weekData = [0,0,0,0,0,0,0];
+}
+
+const navHome = document.getElementById("navHome");
+const navForest = document.getElementById("navForest");
+const navData = document.getElementById("navData");
+const navAchieve = document.getElementById("navAchieve");
+const navMine = document.getElementById("navMine");
+const allNav = document.querySelectorAll(".nav-bar button");
+const allPage = document.querySelectorAll(".page");
+const timerCard = document.getElementById("timerCard");
+const ringProgress = document.getElementById("ringProgress");
+const modeTag = document.getElementById("modeTag");
+
+// 背景漂浮粒子
+(function initFloats() {
+  const box = document.getElementById("bgFloats");
+  const icons = ["🌱","🍃","🌿","💧","🍅","✨"];
+  for (let i = 0; i < 14; i++) {
+    const el = document.createElement("div");
+    el.className = "float-item";
+    el.textContent = icons[i % icons.length];
+    el.style.left = Math.random() * 100 + "%";
+    el.style.animationDuration = (12 + Math.random() * 18) + "s";
+    el.style.animationDelay = (Math.random() * 15) + "s";
+    el.style.fontSize = (16 + Math.random() * 14) + "px";
+    box.appendChild(el);
+  }
+})();
+
+// Toast 通知
+let toastTimer = null;
+function showToast(icon, msg) {
+  const toast = document.getElementById("toast");
+  document.getElementById("toastIcon").innerText = icon;
+  document.getElementById("toastMsg").innerText = msg;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { toast.classList.remove("show"); }, 3500);
+}
+
+function isAuthed() {
+  return !!(loginState && loginState.isLogin);
+}
+
+function requireAuth(pageId) {
+  if (pageId === "login") return true;
+  if (!isAuthed()) {
+    showToast("🔒", "请先登录后再进入");
+    switchPage("login", true);
+    return false;
+  }
+  return true;
+}
+
+function updateNavAuth() {
+  var loggedIn = isAuthed();
+  var protectedNav = [navHome, navForest, navData, navAchieve, navMine];
+  protectedNav.forEach(function(btn) {
+    btn.disabled = !loggedIn;
+    btn.classList.toggle("nav-locked", !loggedIn);
+  });
+  document.body.classList.toggle("logged-in", loggedIn);
+  document.body.classList.toggle("not-logged-in", !loggedIn);
+}
+
+function getLevel() { return Math.floor(seedData.growValue / EXP_PER_LEVEL) + 1; }
+function getLevelProgress() { return seedData.growValue % EXP_PER_LEVEL; }
+function getWaterToNextTree() { return WATER_PER_TREE - (seedData.water % WATER_PER_TREE); }
+
+function tryPlantTree() {
+  var planted = 0;
+  while (seedData.water >= WATER_PER_TREE) {
+    seedData.water -= WATER_PER_TREE;
+    seedData.treeList.push({
+      day: new Date().getDate(),
+      grow: seedData.growValue,
+      time: new Date().toLocaleString()
+    });
+    planted++;
+  }
+  return planted;
+}
+
+// 庆祝弹窗
+var celebQueue = [];
+var celebShowing = false;
+
+function showCelebration(type, data) {
+  celebQueue.push({ type: type, data: data });
+  if (!celebShowing) playNextCeleb();
+}
+
+function playNextCeleb() {
+  if (celebQueue.length === 0) { celebShowing = false; return; }
+  celebShowing = true;
+  var item = celebQueue.shift();
+  var overlay = document.getElementById("celebOverlay");
+  var emoji = document.getElementById("celebEmoji");
+  var title = document.getElementById("celebTitle");
+  var sub = document.getElementById("celebSub");
+  var particlesBox = document.getElementById("celebParticles");
+
+  if (item.type === "tree") {
+    emoji.innerText = "🌳";
+    title.innerText = "种下了一棵树！";
+    var treeCount = seedData.treeList.length;
+    sub.innerText = "60 水滴汇聚，你的森林已有 " + treeCount + " 棵树";
+  } else if (item.type === "levelup") {
+    emoji.innerText = "⭐";
+    title.innerText = "升级啦！Lv." + item.data.level;
+    sub.innerText = "经验值积累 " + EXP_PER_LEVEL + "，成长为更强的你";
+  }
+
+  // 生成粒子
+  particlesBox.innerHTML = "";
+  var particleIcons = item.type === "tree"
+    ? ["🌳","🌿","🍃","💧","✨","🌱"]
+    : ["⭐","✨","🌟","💫","🎉","🎊"];
+  for (var i = 0; i < 18; i++) {
+    var p = document.createElement("div");
+    p.className = "celeb-particle";
+    p.innerText = particleIcons[i % particleIcons.length];
+    p.style.left = "50%";
+    p.style.top = "45%";
+    var angle = (i / 18) * Math.PI * 2;
+    var dist1 = 60 + Math.random() * 80;
+    var dist2 = 150 + Math.random() * 200;
+    p.style.setProperty("--tx1", Math.cos(angle) * dist1 + "px");
+    p.style.setProperty("--ty1", Math.sin(angle) * dist1 + "px");
+    p.style.setProperty("--tx2", Math.cos(angle) * dist2 + "px");
+    p.style.setProperty("--ty2", Math.sin(angle) * dist2 - 100 + "px");
+    p.style.animationDelay = (Math.random() * 0.4) + "s";
+    p.style.fontSize = (18 + Math.random() * 16) + "px";
+    particlesBox.appendChild(p);
+  }
+
+  // 显示
+  overlay.classList.add("show");
+
+  // 关闭按钮
+  document.getElementById("celebBtn").onclick = function() {
+    overlay.classList.remove("show");
+    setTimeout(playNextCeleb, 400);
+  };
+}
+
+function updateRewardHint() {
+  var reward = seedData.focusMin * REWARD_PER_MIN;
+  document.getElementById("rewardWater").innerText = reward;
+  document.getElementById("rewardExp").innerText = reward;
+}
+
+function updateRing() {
+  var total = isFocusMode ? focusSec : restSec;
+  var pct = total > 0 ? curTime / total : 0;
+  ringProgress.style.strokeDashoffset = RING_CIRCUMFERENCE * (1 - pct);
+}
+
+function setTimerRunning(running) {
+  timerCard.classList.toggle("timer-running", running);
+}
+
+var focusLocked = false;
+function setFocusLock(locked) {
+  focusLocked = locked;
+  document.body.classList.toggle("focus-lock", locked);
+}
+
+allNav.forEach(function(btn) {
+  btn.onclick = function() {
+    var target = btn.dataset.page;
+    if (!requireAuth(target)) return;
+    switchPage(target);
+  };
+});
+
+document.getElementById("toReg").onclick = function() {
+  document.getElementById("loginForm").style.display = "none";
+  document.getElementById("regForm").style.display = "block";
+  document.getElementById("loginTip").innerText = "";
+};
+document.getElementById("toLogin").onclick = function() {
+  document.getElementById("regForm").style.display = "none";
+  document.getElementById("loginForm").style.display = "block";
+  document.getElementById("regTip").innerText = "";
+};
+
+document.getElementById("regBtn").onclick = function() {
+  var un = document.getElementById("regUser").value.trim();
+  var pw = document.getElementById("regPwd").value.trim();
+  var pw2 = document.getElementById("regPwd2").value.trim();
+  var tip = document.getElementById("regTip");
+  tip.innerText = "";
+  if (!un || !pw) { tip.innerText = "用户名密码不能为空"; return; }
+  if (pw !== pw2) { tip.innerText = "两次密码不一致"; return; }
+  if (userAccountDB.find(function(i) { return i.name === un; })) { tip.innerText = "用户名已被注册"; return; }
+  userAccountDB.push({ name: un, pwd: pw });
+  storage.set("seedUserDB", userAccountDB);
+  showToast("✅", "注册成功，请登录");
+  document.getElementById("regForm").style.display = "none";
+  document.getElementById("loginForm").style.display = "block";
+};
+
+document.getElementById("loginBtn").onclick = function() {
+  var un = document.getElementById("loginUser").value.trim();
+  var pw = document.getElementById("loginPwd").value.trim();
+  var tip = document.getElementById("loginTip");
+  tip.innerText = "";
+  if (!un || !pw) { tip.innerText = "填写账号密码"; return; }
+  if (!userAccountDB.find(function(i) { return i.name === un && i.pwd === pw; })) { tip.innerText = "账号或密码错误"; return; }
+  loginState = { isLogin: true, name: un };
+  storage.set("seedLogin", loginState);
+  updateNavAuth();
+  switchPage("home");
+  showToast("👋", "欢迎回来，" + un + "！");
+};
+
+document.getElementById("logoutBtn").onclick = function() {
+  loginState = { isLogin: false, name: "" };
+  storage.set("seedLogin", loginState);
+  updateNavAuth();
+  switchPage("login");
+};
+
+function switchPage(pageId, skipAuthCheck) {
+  if (!skipAuthCheck && !requireAuth(pageId)) return;
+  if (focusLocked && pageId !== "timer") {
+    showToast("🔒", "专注进行中，请先完成本轮或点击「放弃本轮」");
+    return;
+  }
+
+  allPage.forEach(function(p) { p.classList.remove("show"); });
+  var page = document.getElementById(pageId);
+  if (!page) return;
+  page.classList.remove("show");
+  void page.offsetWidth;
+  page.classList.add("show");
+  allNav.forEach(function(b) { b.classList.remove("active"); });
+  var navBtn = document.querySelector('.nav-bar [data-page="' + pageId + '"]');
+  if (navBtn) navBtn.classList.add("active");
+
+  if (pageId === "home") renderHome();
+  if (pageId === "forest") renderForest();
+  if (pageId === "data") renderChart();
+  if (pageId === "achievement") renderMedal();
+  if (pageId === "mine") renderMine();
+  if (pageId === "timer") { updateRewardHint(); updateRing(); }
+}
+
+var focusSec = seedData.focusMin * 60;
+var restSec = 5 * 60;
+var curTime = focusSec;
+var timer = null;
+var isFocusMode = true;
+var timeText = document.getElementById("timeText");
+
+function formatTime(s) {
+  var m = Math.floor(s / 60);
+  var sec = s % 60;
+  return String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+}
+function updateTimeDom() {
+  timeText.innerText = formatTime(curTime);
+  modeTag.innerText = isFocusMode ? "🍅 专注模式" : "☕ 休息模式";
+  updateRing();
+}
+updateTimeDom();
+
+document.getElementById("startTime").onclick = function() {
+  if (timer) return;
+  setTimerRunning(true);
+  if (isFocusMode) setFocusLock(true);
+  document.getElementById("startTime").innerText = "⏳ 专注中…";
+  timer = setInterval(function() {
+    curTime--;
+    updateTimeDom();
+    if (curTime <= 0) {
+      clearInterval(timer);
+      timer = null;
+      setTimerRunning(false);
+      setFocusLock(false);
+      document.getElementById("startTime").innerText = "▶ 开始专注";
+
+      if (isFocusMode) {
+        var reward = seedData.focusMin * REWARD_PER_MIN;
+        var oldLevel = getLevel();
+        seedData.todayTomato++;
+        seedData.allTomato++;
+        seedData.water += reward;
+        seedData.growValue += reward;
+        seedData.allMin += seedData.focusMin;
+        var weekdayIdx = (new Date().getDay() + 6) % 7;
+        seedData.weekData[weekdayIdx] += seedData.focusMin;
+        var planted = tryPlantTree();
+        var newLevel = getLevel();
+        checkMedal();
+        storage.set("seedData", seedData);
+
+        var msg = "专注完成！水滴 +" + reward + "，经验 +" + reward;
+        if (planted > 0) msg += "，成功种下 " + planted + " 棵树 🌳";
+        showToast("🌸", msg);
+
+        // 触发庆祝动画
+        for (var t = 0; t < planted; t++) {
+          showCelebration("tree", {});
+        }
+        if (newLevel > oldLevel) {
+          showCelebration("levelup", { level: newLevel });
+        }
+
+        var homeTree = document.getElementById("homeTree");
+        homeTree.classList.remove("seed-grow");
+        void homeTree.offsetWidth;
+        homeTree.classList.add("seed-grow");
+        renderHome();
+      } else {
+        showToast("☕", "休息结束，继续学习吧！");
+      }
+      isFocusMode = !isFocusMode;
+      curTime = isFocusMode ? focusSec : restSec;
+      updateTimeDom();
+    }
+  }, 1000);
+};
+
+document.getElementById("pauseTime").onclick = function() {
+  clearInterval(timer);
+  timer = null;
+  setTimerRunning(false);
+  document.getElementById("startTime").innerText = "▶ 继续专注";
+};
+
+document.getElementById("stopTime").onclick = function() {
+  clearInterval(timer);
+  timer = null;
+  setTimerRunning(false);
+  setFocusLock(false);
+  document.getElementById("startTime").innerText = "▶ 开始专注";
+  curTime = isFocusMode ? focusSec : restSec;
+  updateTimeDom();
+};
+
+function renderHome() {
+  var percent = getLevelProgress();
+  document.getElementById("growPercent").innerText = percent;
+  document.getElementById("growBar").style.width = percent + "%";
+  document.getElementById("homeLevel").innerText = getLevel();
+
+  var treeEmoji = "🌱";
+  if (percent >= 25) treeEmoji = "🌿";
+  if (percent >= 50) treeEmoji = "🌳";
+  if (percent >= 75) treeEmoji = "🍅";
+  if (percent >= 100) treeEmoji = "🌲";
+  var homeTree = document.getElementById("homeTree");
+  if (homeTree.innerText !== treeEmoji) {
+    homeTree.innerText = treeEmoji;
+    homeTree.classList.add("seed-grow");
+  }
+
+  document.getElementById("tomatoNow").innerText = seedData.todayTomato;
+  document.getElementById("tomatoTarget").innerText = seedData.targetTomato;
+  document.getElementById("targetBar").style.width = Math.min(Math.floor(seedData.todayTomato / seedData.targetTomato * 100), 100) + "%";
+  document.getElementById("todayTime").innerText = seedData.todayTomato * seedData.focusMin;
+  document.getElementById("continueDay").innerText = seedData.continueSign;
+  document.getElementById("waterNum").innerText = seedData.water;
+  document.getElementById("waterToTree").innerText = getWaterToNextTree();
+
+  document.getElementById("dailyQuote").innerText = QUOTES[new Date().getDate() % QUOTES.length];
+}
+document.getElementById("goTimer").onclick = function() { switchPage("timer"); };
+
+function renderForest() {
+  var box = document.getElementById("forestBox");
+  var empty = document.getElementById("forestEmpty");
+  box.innerHTML = "";
+  document.getElementById("treeTotal").innerText = seedData.treeList.length;
+
+  if (seedData.treeList.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+  seedData.treeList.forEach(function(item, index) {
+    var div = document.createElement("div");
+    div.className = "tree-item";
+    div.innerText = "🌳";
+    div.style.animationDelay = (index * 0.08) + "s";
+    div.title = "第 " + (index + 1) + " 棵 · 第" + item.day + "日培育 · 经验值" + item.grow;
+    box.appendChild(div);
+  });
+}
+
+function checkMedal() {
+  if (seedData.allTomato >= 1) seedData.medal.med1 = true;
+  if (seedData.continueSign >= 7) seedData.medal.med2 = true;
+  if (seedData.allTomato >= 100) seedData.medal.med3 = true;
+  if (seedData.allMin >= 3000) seedData.medal.med4 = true;
+  storage.set("seedData", seedData);
+}
+
+function renderMedal() {
+  document.querySelectorAll(".medal-item").forEach(function(m) {
+    var id = m.dataset.id;
+    m.classList.toggle("unlock", !!seedData.medal[id]);
+  });
+}
+
+var lineChartInst = null;
+var barChartInst = null;
+function renderChart() {
+  var lineCtx = document.getElementById("lineChart").getContext("2d");
+  if (lineChartInst) lineChartInst.destroy();
+  var weekData = (Array.isArray(seedData.weekData) && seedData.weekData.length === 7)
+    ? seedData.weekData
+    : [0,0,0,0,0,0,0];
+  lineChartInst = new Chart(lineCtx, {
+    type: "line",
+    data: {
+      labels: ["周一","周二","周三","周四","周五","周六","周日"],
+      datasets: [{
+        label: "每日专注时长(分钟)",
+        data: weekData,
+        borderColor: "#96D496",
+        fill: true,
+        backgroundColor: "rgba(150,212,150,0.2)",
+        tension: 0.4
+      }]
+    },
+    options: {
+      animation: { duration: 800 },
+      scales: { y: { beginAtZero: true, suggestedMax: 10 } }
+    }
+  });
+  var barCtx = document.getElementById("barChart").getContext("2d");
+  if (barChartInst) barChartInst.destroy();
+  barChartInst = new Chart(barCtx, {
+    type: "bar",
+    data: {
+      labels: ["累计番茄"],
+      datasets: [{ label: "番茄数", data: [seedData.allTomato], backgroundColor: "#96D496", borderRadius: 8 }]
+    },
+    options: { animation: { duration: 800 } }
+  });
+  document.getElementById("allTime").innerText = Math.floor(seedData.allMin / 60);
+  document.getElementById("allTomato").innerText = seedData.allTomato;
+  document.getElementById("maxContinue").innerText = seedData.maxContinue;
+}
+
+function renderMine() {
+  document.getElementById("userNameShow").innerText = loginState.name;
+  document.getElementById("userLevel").innerText = getLevel();
+  document.getElementById("allWater").innerText = seedData.water;
+  document.getElementById("allExp").innerText = seedData.growValue;
+  document.getElementById("focusShow").innerText = seedData.focusMin;
+  document.getElementById("targetShow").innerText = seedData.targetTomato;
+  document.getElementById("focusSlider").value = seedData.focusMin;
+  document.getElementById("targetSlider").value = seedData.targetTomato;
+  document.getElementById("saveTip").innerText = "";
+}
+
+document.getElementById("focusSlider").oninput = function() {
+  document.getElementById("focusShow").innerText = this.value;
+};
+document.getElementById("targetSlider").oninput = function() {
+  document.getElementById("targetShow").innerText = this.value;
+};
+
+document.getElementById("saveSettings").onclick = function() {
+  seedData.focusMin = Number(document.getElementById("focusSlider").value);
+  seedData.targetTomato = Number(document.getElementById("targetSlider").value);
+  focusSec = seedData.focusMin * 60;
+  if (isFocusMode && !timer) {
+    curTime = focusSec;
+    updateTimeDom();
+  }
+  storage.set("seedData", seedData);
+  updateRewardHint();
+  var tip = document.getElementById("saveTip");
+  tip.style.color = "#5a9c5a";
+  tip.innerText = "设置已保存 ✓";
+  showToast("💾", "设置已保存");
+  renderHome();
+};
+
+document.getElementById("themeSwitch").onclick = function() { document.body.classList.toggle("dark"); };
+
+document.getElementById("clearAll").onclick = function() {
+  if (confirm("确定清空所有成长、学习数据？不可恢复！")) {
+    storage.del("seedData");
+    location.reload();
+  }
+};
+
+function initApp() {
+  updateNavAuth();
+  if (isAuthed()) {
+    switchPage("home", true);
+  } else {
+    switchPage("login", true);
+  }
+}
+
+initApp();
+</script>
+</body>
+</html>
